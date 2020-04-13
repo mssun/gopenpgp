@@ -9,4 +9,4 @@ require (
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392
 )
 
-replace golang.org/x/crypto => github.com/ProtonMail/crypto v0.0.0-20200406171318-1e8bf1c40869
+replace golang.org/x/crypto => github.com/mssun/crypto v1.0.1-0.20200413001233-0031b5ac8757

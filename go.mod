@@ -18,3 +18,5 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )
+
+replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto gopenpgp-v2.6.0-passforios

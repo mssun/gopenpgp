@@ -4,7 +4,115 @@ package helper
 import (
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/pkg/errors"
+	goerrors "errors"
+        pgpErrors "github.com/ProtonMail/go-crypto/openpgp/errors"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"io"
+        "bytes"
 )
+
+func PassGetEncryptedMPI1(pgpMessage *crypto.PGPMessage) (encryptedMPI1 []byte, err error) {
+	var p packet.Packet
+	packets := packet.NewReader(pgpMessage.NewReader())
+	var mpi1 []byte
+
+Loop1:
+	for {
+		if p, err = packets.Next(); goerrors.Is(err, io.EOF) {
+			break
+		}
+
+		switch p := p.(type) {
+		case *packet.EncryptedKey:
+                        mpi1 = p.GetEncryptedMPI1()
+			break Loop1
+		}
+	}
+
+	return mpi1, nil
+}
+
+func PassGetEncryptedMPI2(pgpMessage *crypto.PGPMessage) (encryptedMPI2 []byte, err error) {
+	var p packet.Packet
+	packets := packet.NewReader(pgpMessage.NewReader())
+	var mpi2 []byte
+
+Loop1:
+	for {
+		if p, err = packets.Next(); goerrors.Is(err, io.EOF) {
+			break
+		}
+
+		switch p := p.(type) {
+		case *packet.EncryptedKey:
+                        mpi2 = p.GetEncryptedMPI2()
+			break Loop1
+		}
+	}
+
+	return mpi2, nil
+}
+
+
+func PassDecryptWithSessionKey(pgpMessage *crypto.PGPMessage, sk *crypto.SessionKey) (plain_message  *crypto.PlainMessage, err error) {
+	var p packet.Packet
+	packets := packet.NewReader(pgpMessage.NewReader())
+	var edp packet.EncryptedDataPacket
+
+Loop1:
+	for {
+		if p, err = packets.Next(); goerrors.Is(err, io.EOF) {
+			break
+		}
+
+		switch p := p.(type) {
+		case *packet.SymmetricallyEncrypted, *packet.AEADEncrypted:
+			edp = p.(packet.EncryptedDataPacket)
+			break Loop1
+		}
+	}
+
+	var decrypted io.ReadCloser
+	f, err := sk.GetCipherFunc()
+	decrypted, err = edp.Decrypt(f, sk.Key)
+	packets.Push(decrypted)
+
+	md := new(openpgp.MessageDetails)
+Loop2:
+	for {
+		if p, err = packets.Next(); goerrors.Is(err, io.EOF) {
+			break
+		}
+		switch p := p.(type) {
+		case *packet.Compressed:
+			packets.Push(p.Body)
+		case *packet.LiteralData:
+			md.LiteralData = p
+			md.UnverifiedBody = md.LiteralData.Body
+			break Loop2
+		}
+	}
+
+	messageBuf := bytes.NewBuffer(nil)
+	_, err = io.Copy(messageBuf, md.UnverifiedBody)
+	if errors.Is(err, pgpErrors.ErrMDCHashMismatch) {
+		// This MDC error may also be triggered if the password is correct, but the encrypted data was corrupted.
+		// To avoid confusion, we do not inform the user about the second possibility.
+		return nil, errors.New("gopenpgp: wrong password in symmetric decryption")
+	}
+	if err != nil {
+		// Parsing errors after decryption, triggered before parsing the MDC packet, are also usually the result of wrong password
+		return nil, errors.New("gopenpgp: error in reading password protected message: wrong password or malformed message")
+	}
+
+	return &crypto.PlainMessage{
+		Data:     messageBuf.Bytes(),
+		TextType: !md.LiteralData.IsBinary,
+		Filename: md.LiteralData.FileName,
+		Time:     md.LiteralData.Time,
+	}, nil
+}
 
 // EncryptMessageWithPassword encrypts a string with a passphrase using AES256.
 func EncryptMessageWithPassword(password []byte, plaintext string) (ciphertext string, err error) {

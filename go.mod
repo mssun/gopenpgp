@@ -10,3 +10,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.7.0
 )
+
+replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto passforios

@@ -11,4 +11,4 @@ require (
 	golang.org/x/crypto v0.7.0
 )
 
-replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto passforios
+replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto gopenpgp-v2.6.0-passforios

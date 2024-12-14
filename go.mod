@@ -19,4 +19,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 )
 
-replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto v1.1.3-passforios
+replace github.com/ProtonMail/go-crypto => github.com/mssun/go-crypto v1.1.3-mssun-passforios
